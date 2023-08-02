@@ -11,11 +11,19 @@ Ensure that your Laravel application is running locally on a development server.
 php artisan serve
 
 
+
+
+
+
+
 Step 2: Register a New User
 In Postman, make a POST request to the following URL to register a new user:
 
 
+
 POST {{THE URL COME IN}}/api/register
+
+
 Set the request body to JSON format and provide the required user registration data, for example:
 
 json
@@ -31,6 +39,14 @@ json
 {
   "token": "YOUR_API_TOKEN"
 }
+
+
+
+
+
+
+
+
 Step 3: Login with the Registered User
 In Postman, make a POST request to the following URL to log in with the registered user:
 
@@ -49,6 +65,13 @@ json
 {
   "token": "YOUR_API_TOKEN"
 }
+
+
+
+
+
+
+
 Step 4: Access Protected Routes
 Now that you have obtained the API token, you can use it to access protected routes in your Laravel application. For example, let's assume you have a protected route to retrieve the user's profile:
 
@@ -59,6 +82,13 @@ In Postman, make a GET request to the above URL and add the API token to the req
 
 Authorization: Bearer YOUR_API_TOKEN
 Click the "Send" button to retrieve the user's profile. If successful, you should receive a response with the user's information.
+
+
+
+
+
+
+
 
 Step 5: Logout
 To log out the user and invalidate the API token, make a POST request to the following URL:
