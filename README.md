@@ -2,6 +2,56 @@
 
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
+
+
+IN YOUR OF REACT PROJECT 
+
+
+MAKE SURE YOU IMPORT AXOIS
+GO TO YOUR APP.JS AND ADD THIS 
+
+axios.defaults.baseURL ={{ URL }}
+axios.defaults.headers.post = ['Content-Type'] = 'application/json';
+axios.defaults.headers.post = ['Accept'] = 'application/json';
+
+axios.defaults.withCredentials = true;
+
+
+THIS A CSRF_TOKEN , IS VERY IMPORTANT IN LARAVEL , IF NOT , IT WILL NOT WORK 
+
+ADD IT IN YOUR REGISTER, LOGIN AND TO YOUR AUTHENTICATION PAGE , IT HELP TO KNOW THE AUTH USER OR NOT 
+
+SO THIS AN EXAMPLE OF IT 
+
+//csrf token
+axios.get('/sanctum/csrf-cookie').then(response => {
+axios.post('api/register', data).then(res=> {
+if(res.data.status ===200)
+{
+
+}else{
+setRegister({...registerInput, error_list: res.data.validation_errors});
+}
+});
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Sure! Here's a step-by-step guide on how to use Postman to test the Laravel Sanctum API for user authentication:
 
 Step 1: Start Laravel Development Server
