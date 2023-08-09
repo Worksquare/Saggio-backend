@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers\Api;
 
+use Carbon\Carbon;
 use App\Models\User;
+use App\Mail\Passwordreset;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use App\Mail\EmailVerification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
@@ -31,24 +37,36 @@ class AuthController extends Controller
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
             ]);
+            // Send the email verification notification
+            $verificationUrl = URL::temporarySignedRoute(
+                'verify-email',
+                now()->addMinute(10),
+                ['email' => $user->email],
+                false // Set this to false to get the URL without the domain
+            );
+            // Prepend the FRONTEND_URL to the generated URL
+            $verificationUrl = Config::get('app.frontend_url') . $verificationUrl;
+            Mail::to($user)->send(new EmailVerification($verificationUrl));
             $token = $user->createToken($user->email . '_Token')->plainTextToken;
-
             return response()->json([
                 'status' => Response::HTTP_OK, //200
                 'username' => $user->name,
                 'access_token' => $token,
                 "message" => 'successfully registered user!',
+                "email_verfication" => 'Please verify your email!',
             ], Response::HTTP_CREATED); //202
         }
     }
 
     // login controller
+
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|max:191',
             'password' => 'required|min:8',
         ]);
+
         if ($validator->fails()) {
             return response()->json([
                 'validation_error' => $validator->messages(),
@@ -59,9 +77,17 @@ class AuthController extends Controller
             if (!$user || !Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'status' => Response::HTTP_UNAUTHORIZED, //401
-                    'message' => 'Invalid credentials'
+                    'message' => 'Invalid credentials',
                 ]);
             } else {
+                // Check if the user's email is verified
+                if (!$user->email_verified_at) {
+                    return response()->json([
+                        'status' => Response::HTTP_UNAUTHORIZED, //401
+                        'message' => 'Please verify your email before logging in.',
+                    ]);
+                }
+
                 $token = $user->createToken($user->email . '_Token')->plainTextToken;
 
                 return response()->json([
@@ -74,6 +100,7 @@ class AuthController extends Controller
         }
     }
 
+
     // logout controller
     public function logout()
     {
@@ -85,53 +112,35 @@ class AuthController extends Controller
     }
 
 
-
+  // sendResetLinkEmail controller
     public function sendResetLinkEmail(Request $request)
     {
-        $request->validate(['email' => 'required|email']);
 
-        $status = Password::sendResetLink($request->only('email'));
-
-        if ($status === Password::RESET_LINK_SENT) {
-            return response()->json([
-                'message' => 'Password reset link sent successfully',
-                'status' => Response::HTTP_OK,
-            ]);
-        } else {
-            return response()->json([
-                'message' => 'Unable to s
-                end password reset link',
-                'status' => Response::HTTP_INTERNAL_SERVER_ERROR, // 500
-            ]);
-        }
-    }
-
-
-
-    public function reset(Request $request)
-    {
-        $request->validate([
-            'token' => 'required',
-            'email' => 'required|email',
-            'password' => 'required|confirmed|min:8',
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|max:191',
         ]);
-
-        $status = Password::reset($request->only('email', 'password', 'password_confirmation', 'token'), function ($user, $password) {
-            $user->forceFill([
-                'password' => bcrypt($password),
-            ])->setRememberToken(Str::random(60));
-
-            $user->save();
-        });
-
-        
-        if ($status === Password::PASSWORD_RESET) {
+        if ($validator->fails()) {
             return response()->json([
-                'message' => 'Password reset successfully', 'status' => Response::HTTP_OK
+                'validation_error' => $validator->messages(),
             ]);
-        } else {
-            return response()->json(['message' => 'Unable to reset password'], Response::HTTP_INTERNAL_SERVER_ERROR);
-
         }
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json(['message' => 'User not found!', 'status' => Response::HTTP_NOT_FOUND], Response::HTTP_NOT_FOUND);
+        }
+        $token = Str::random(64);
+        DB::table('password_resets')->insert([
+            'email' => $request->email,
+            'token' => $token,
+            'created_at' => Carbon::now(),
+        ]);
+        $passwordUrl = URL::temporarySignedRoute('password-reset', now()->addMinute(10), ['email' => $user->email, 'token' => $token], false);
+        $passwordUrl = Config::get('app.frontend_url') . $passwordUrl;
+        Mail::to($user)->send(new Passwordreset($passwordUrl));
+
+        return response()->json([
+            'message' => 'Password reset link sent successfully to your email',
+            'status' => Response::HTTP_OK,
+        ]);
     }
 }
